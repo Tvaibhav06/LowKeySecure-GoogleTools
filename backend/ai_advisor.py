@@ -6,7 +6,7 @@ Optional AI-powered privacy risk summarizer.
 Takes **only aggregated, anonymised metrics** — never raw PII —
 and produces a short natural-language advisory paragraph.
 
-Uses the Groq API (LLaMA models) if configured;
+Uses the Gemini API (via LangChain) if configured;
 otherwise a deterministic template-based fallback is returned.
 """
 
@@ -33,11 +33,11 @@ def generate_ai_summary(metrics_dict: Dict[str, Any]) -> str:
         A human-readable advisory paragraph.
     """
 
-    # ── Attempt AI-powered summary via Groq ────────────────────────────
-    api_key = os.getenv("GROQ_API_KEY")
+    # ── Attempt AI-powered summary via Gemini (LangChain) ──────────────
+    api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
     if api_key:
         try:
-            return _call_groq(api_key, metrics_dict)
+            return _call_gemini(api_key, metrics_dict)
         except Exception:
             # Silently fall back to template-based summary
             pass
@@ -48,38 +48,26 @@ def generate_ai_summary(metrics_dict: Dict[str, Any]) -> str:
 
 # ── Private helpers ────────────────────────────────────────────────────
 
-def _call_groq(api_key: str, metrics_dict: Dict[str, Any]) -> str:
+def _call_gemini(api_key: str, metrics_dict: Dict[str, Any]) -> str:
     """
-    Call the Groq Chat Completions API with a privacy-focused system prompt.
-
-    Groq exposes an OpenAI-compatible endpoint, so we use the openai
-    client library pointed at Groq's base URL.
+    Call the Gemini API via LangChain with a privacy-focused system prompt.
 
     Only sends aggregated numbers — no PII crosses the boundary.
     """
     import json
-
     try:
-        from groq import Groq  # type: ignore
+        from langchain_google_genai import ChatGoogleGenerativeAI
+        from langchain_core.prompts import ChatPromptTemplate
+        from langchain_core.output_parsers import StrOutputParser
     except ImportError:
-        # If groq SDK is not installed, try openai client with base_url override
-        try:
-            import openai  # type: ignore
-            client = openai.OpenAI(
-                api_key=api_key,
-                base_url="https://api.groq.com/openai/v1",
-            )
-            return _chat_completion(client, metrics_dict)
-        except ImportError:
-            return _template_summary(metrics_dict)
+        return _template_summary(metrics_dict)
 
-    client = Groq(api_key=api_key)
-    return _chat_completion(client, metrics_dict)
-
-
-def _chat_completion(client, metrics_dict: Dict[str, Any]) -> str:
-    """Shared chat completion logic for both groq and openai clients."""
-    import json
+    llm = ChatGoogleGenerativeAI(
+        model="gemini-1.5-flash",
+        google_api_key=api_key,
+        temperature=0.7,
+        max_tokens=200
+    )
 
     system_prompt = (
         "You are a student privacy advisor for a campus event system called LowKey Secure. "
@@ -88,23 +76,14 @@ def _chat_completion(client, metrics_dict: Dict[str, Any]) -> str:
         "Be empathetic, actionable, and clear. Do not use markdown formatting."
     )
 
-    user_prompt = (
-        f"Here are the student's aggregated privacy metrics for the month:\n"
-        f"{json.dumps(metrics_dict, indent=2)}\n\n"
-        f"Provide a brief privacy advisory."
-    )
+    prompt = ChatPromptTemplate.from_messages([
+        ("system", system_prompt),
+        ("human", "Here are the student's aggregated privacy metrics for the month:\n{metrics_json}\n\nProvide a brief privacy advisory.")
+    ])
 
-    response = client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
-        messages=[
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt},
-        ],
-        max_tokens=200,
-        temperature=0.7,
-    )
+    chain = prompt | llm | StrOutputParser()
 
-    return response.choices[0].message.content.strip()
+    return chain.invoke({"metrics_json": json.dumps(metrics_dict, indent=2)})
 
 
 def _template_summary(metrics_dict: Dict[str, Any]) -> str:
