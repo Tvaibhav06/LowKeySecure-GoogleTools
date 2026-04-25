@@ -8,6 +8,7 @@ bcrypt==4.0.1
 pydantic
 python-multipart
 python-dotenv
-groq
+langchain-google-genai
+langchain-core
 pytest
 requests
