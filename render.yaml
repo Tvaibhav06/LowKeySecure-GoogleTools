@@ -12,15 +12,3 @@ services:
         generateValue: true
       - key: GEMINI_API_KEY
         sync: false
-    routes:
-      - path: /
-        destination: http://localhost:8000
-
-  # Frontend Service
-  - type: static
-    name: lowkey-secure-frontend
-    buildCommand: cd frontend && npm install && npm run build
-    staticPublishPath: frontend/dist
-    routes:
-      - path: /api/*
-        destination: lowkey-secure-backend:8000
