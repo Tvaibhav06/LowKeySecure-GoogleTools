@@ -6,13 +6,13 @@
 ![React](https://img.shields.io/badge/React_19-61DAFB?style=flat&logo=react&logoColor=black)
 ![SQLite](https://img.shields.io/badge/SQLite-003B57?style=flat&logo=sqlite&logoColor=white)
 ![TailwindCSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=flat&logo=tailwind-css&logoColor=white)
-
+![FireBase](https://img.shields.io/badge/firebase-ffca28?style=for-the-badge&logo=firebase&logoColor=black)
 ---
 
 🚀 **LowKey Secure is now live!**
 
 🔗 **Visit here:**  
-👉 [LowKey Secure](https://lowkey-secure-noe9.onrender.com/)
+👉 [LowKey Secure](https://lowkey--tools.web.app/login)
 
 ## 📖 Overview
 
